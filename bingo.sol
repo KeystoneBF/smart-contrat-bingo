@@ -23,7 +23,7 @@ contract Bingo {
     constructor() {
         owner =  payable(msg.sender);
         for(uint i=0; i < 75; i++) {
-            numbers[i] = i + 1;
+            numbers.push(i + 1);
         }
     }
 
@@ -89,12 +89,15 @@ contract Bingo {
         emit NewBallDrawn(drawnBall);
     }
 
-    // função auxiliar para sortear um número de um array passado como parâmetro
-    function _raffeNumber(uint[] memory _array) private returns(uint) {
-        uint random = _array[uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % _array.length];
-        uint luckyNumber = _array[random];
-        nonce++;
-        return luckyNumber;
+    // função para retornar os números sorteados
+    function getDrawnNumbers() external view returns (uint[] memory) {
+        uint[] memory result = new uint[](75);
+        for (uint i = 0; i < 75; i++) {
+            if (drawnNumbers[i] == 1) {
+                result[i] = i + 1;
+            }
+        }
+        return result;
     }
 
     // função para criar uma nova cartela

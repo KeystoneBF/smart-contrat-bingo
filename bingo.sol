@@ -42,6 +42,11 @@ contract Bingo {
         _;
     }
 
+    // função que verifica se o usuário é o dono do contrato
+    function isOwner() external view returns(bool) {
+        return (msg.sender == owner);
+    }
+
     // função que permite ao dono do contrato mudar o preço da cartela
     function setCardPrice(uint _price) external onlyOwner {
         cardPrice = _price;
@@ -61,6 +66,11 @@ contract Bingo {
 
         uint change = msg.value % cardPrice;
         payable(msg.sender).transfer(change);
+    }
+
+    // função para resetar a quantidade de cartelas do usuário
+    function restartCardCounter() external {
+        ownerCardCount[msg.sender] = 0;
     }
 
     // função para sortear a bola da rodada
@@ -166,16 +176,18 @@ contract Bingo {
     }
 
     // função para o ganhador retirar seu prêmio
-    /// @dev Por enquanto o prêmio está como 100% do valor arrecadado
+    /// @dev Por enquanto o prêmio está como 50% do valor arrecadado
     function withdrawPrize() public onlyWinner {
-        winner.transfer(address(this).balance);
+        winner.transfer(address(this).balance / 2);
     }
 
     //função para reiniciar o bingo
     function restartBingo() external onlyOwner {
         started = false;
+        nonce = 0;
         delete cards;
         delete drawnNumbers;
         winner = payable(address(0));
+        owner.transfer(address(this).balance);
     }
 }

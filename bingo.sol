@@ -1,12 +1,14 @@
 pragma solidity >=0.5.0;
 
 contract Bingo {
+    event GameStart(string message);
+    event GameOver(string message);
     event NewCard(uint cardId, uint[25] card);
     event NewBallDrawn(uint number);
 
     address payable owner;
+    address payable winner;
     uint cardPrice = 0.001 ether;
-    address payable winner;    
 
     uint[75] public drawnNumbers;
     uint[25][] public cards;
@@ -16,15 +18,25 @@ contract Bingo {
     mapping (address => uint) ownerCardCount;
 
     constructor() {
-	    owner =  payable(msg.sender);
-	}
+        owner =  payable(msg.sender);
+    }
 
     modifier onlyOwner {
-		require(msg.sender == owner, "Only the contract owner can call this function!");
-		_;
-	}
+        require(msg.sender == owner, "Only the contract owner can call this function!");
+        _;
+    }
 
-    //função para comprar cartelas (mínimo 1 e máximo 4) baseado no valor enviado na transação
+    modifier onlyWinner {
+        require(msg.sender == winner, "Only the bingo winner can call this function!");
+        _;
+    }
+
+    modifier onlyOwnerOf(uint _cardId) {
+        require(msg.sender == cardToOwner[_cardId]);
+        _;
+    }
+
+    // função para comprar cartelas (mínimo 1 e máximo 4) baseado no valor enviado na transação
     function buyCard() external payable {
         require(msg.value >= cardPrice, "Insufficient amount!");
         uint quantity = msg.value / cardPrice;
@@ -38,8 +50,8 @@ contract Bingo {
         payable(msg.sender).transfer(change);
     }
 
-    // Função para sortear a bola da rodada
-    // Somente o dono do contrato pode chamar essa função
+    // função para sortear a bola da rodada
+    // somente o dono do contrato pode chamar essa função
     function raffleBall() external onlyOwner {
         uint luckyNumber;
         do {
@@ -49,7 +61,7 @@ contract Bingo {
         emit NewBallDrawn(luckyNumber);
     }
 
-    //função para criar uma nova cartela
+    // função para criar uma nova cartela
     function _generateCard() private {
         uint counter = 0;
         for (uint column = 0; column < 5; column++) {
@@ -67,18 +79,29 @@ contract Bingo {
         emit NewCard(id, lastGeneratedCard);
     }
 
-    //função para declarar que completou a cartela
-    function shoutBingo(uint _cardId) external {
-
+    // função para declarar que completou a cartela
+    function shoutBingo(uint _cardId) external onlyOwnerOf(_cardId) {
+        if(_isWinner(cards[_cardId])) {
+            winner = payable(msg.sender);
+            emit GameOver("BINGO!");
+        }
     }
 
-    //função para verificar se houve de fato um ganhador
-    function verifyWinner() public {
-
+    // função para verificar se houve de fato um ganhador
+    function _isWinner(uint[25] memory _card) private view returns(bool) {
+        bool result = true;
+        for(uint i = 0; i < _card.length; i++) {
+            uint index = _card[i];
+            if(drawnNumbers[index] == 0) {
+                result = false;
+            }
+        }
+        return result;
     }
 
-    //função para verificar se houve um ganhador
-    function withdrawPrize() public {
-
+    // função para o ganhador retirar seu prêmio
+    /// @dev Por enquanto o prêmio está como 100% do valor arrecadado
+    function withdrawPrize() public onlyWinner {
+        winner.transfer(address(this).balance);
     }
 }

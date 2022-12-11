@@ -2,13 +2,13 @@ pragma solidity >=0.5.0;
 
 contract Bingo {
     event GameStart(string message);
-    event GameOver(string message);
+    event GameOver(address winner);
     event NewCard(uint cardId, uint[] card);
     event NewBallDrawn(uint number);
 
     address payable owner;
     address payable winner;
-    uint cardPrice = 0.001 ether;
+    uint cardPrice = 0.0003 ether;
     bool started = false;
 
     uint[75] public drawnNumbers;
@@ -50,6 +50,7 @@ contract Bingo {
 
         for (uint i = 0; i < quantity ; i++) {
             _generateCard();
+            ownerCardCount[msg.sender]++;
         }
 
         uint change = msg.value % cardPrice;
@@ -86,7 +87,6 @@ contract Bingo {
 
         uint id = cards.length - 1;
         cardToOwner[id] = msg.sender;
-        ownerCardCount[msg.sender]++;
         emit NewCard(id, lastGeneratedCard);
     }
 
@@ -105,11 +105,16 @@ contract Bingo {
         return result;
     }
 
+    // função para retornar os números de uma cartela a partir do seu Id
+    function getCardById(uint _cardId) external view returns(uint[] memory) {
+        return cards[_cardId];
+    }
+
     // função para declarar que completou a cartela
     function shoutBingo(uint _cardId) external onlyOwnerOf(_cardId) {
         if(_isWinner(cards[_cardId])) {
             winner = payable(msg.sender);
-            emit GameOver("BINGO!");
+            emit GameOver(msg.sender);
         }
     }
 

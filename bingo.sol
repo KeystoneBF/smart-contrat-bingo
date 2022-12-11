@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0;
 
 contract Bingo {
@@ -10,7 +11,9 @@ contract Bingo {
     address payable winner;
     uint cardPrice = 0.0003 ether;
     bool started = false;
+    uint nonce = 0;
 
+    uint[] public numbers;
     uint[75] public drawnNumbers;
     uint[][] public cards;
 
@@ -19,20 +22,23 @@ contract Bingo {
 
     constructor() {
         owner =  payable(msg.sender);
+        for(uint i=0; i < 75; i++) {
+            numbers[i] = i + 1;
+        }
     }
 
     modifier onlyOwner {
-        require(msg.sender == owner, "Only the contract owner can call this function!");
+        require(msg.sender == owner, "Somente o dono do contrato pode chamar essa funcao!");
         _;
     }
 
     modifier onlyWinner {
-        require(msg.sender == winner, "Only the bingo winner can call this function!");
+        require(msg.sender == winner, "Somente o vencedor do bingo pode chamar essa funcao!");
         _;
     }
 
     modifier onlyOwnerOf(uint _cardId) {
-        require(msg.sender == cardToOwner[_cardId]);
+        require(msg.sender == cardToOwner[_cardId], "Voce so pode verificar cartelas de sua posse!");
         _;
     }
 
@@ -43,9 +49,9 @@ contract Bingo {
 
     // função para comprar cartelas (mínimo 1 e máximo 4) baseado no valor enviado na transação
     function buyCard() external payable {
-        require(msg.value >= cardPrice, "Insufficient amount!");
+        require(msg.value >= cardPrice, "Valor insuficiente!");
         uint quantity = msg.value / cardPrice;
-        require(quantity + ownerCardCount[msg.sender] <= 4, "You cannot have more than 4 cards");
+        require(quantity + ownerCardCount[msg.sender] <= 4, "Voce nao pode ter mais de 4 cartelas!");
         require(started == false);
 
         for (uint i = 0; i < quantity ; i++) {
@@ -64,24 +70,52 @@ contract Bingo {
             started = true;
             emit GameStart("Bingo has started!");
         }
-        uint luckyNumber;
-        do {
-            luckyNumber = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 75;
-        } while (drawnNumbers[luckyNumber] == 1);
-        drawnNumbers[luckyNumber] = 1;
-        emit NewBallDrawn(luckyNumber);
+        uint random = numbers[uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % numbers.length];
+        uint drawnBall = numbers[random];
+        nonce++;
+        numbers.pop();
+        drawnNumbers[drawnBall - 1] = 1;
+
+        emit NewBallDrawn(drawnBall);
+    }
+
+    // função auxiliar para sortear um número de um array passado como parâmetro
+    function _raffeNumber(uint[] memory _array) private returns(uint) {
+        uint random = _array[uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % _array.length];
+        uint luckyNumber = _array[random];
+        nonce++;
+        return luckyNumber;
     }
 
     // função para criar uma nova cartela
     function _generateCard() private {
-        uint counter = 0;
         uint[] memory lastGeneratedCard = new uint[](25);
-        for (uint column = 0; column < 5; column++) {
-            for (uint line = 0; line < 5; line++) {
-                uint random = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 15 + 15 * column;
-                lastGeneratedCard[counter] = random;
-                counter++;
+        uint[] memory colBNumbers = new uint[](15);
+        uint[] memory colINumbers = new uint[](15);
+        uint[] memory colNNumbers = new uint[](15);
+        uint[] memory colGNumbers = new uint[](15);
+        uint[] memory colONumbers = new uint[](15);
+        for (uint index = 0; index < 15; index++) {
+            colBNumbers[index] = index + 1;
+            colINumbers[index] = index + 16;
+            colNNumbers[index] = index + 31;
+            colGNumbers[index] = index + 46;
+            colONumbers[index] = index + 61;
+        }
+        uint drawnNumber;
+        for (uint i = 0; i < 25; i++) {
+            if (i < 5) {
+                drawnNumber = _raffeNumber(colBNumbers);
+            } else if (5 <= i && i < 10) {
+                drawnNumber = _raffeNumber(colINumbers);
+            } else if (10 <= i && i < 15) {
+                drawnNumber = _raffeNumber(colNNumbers);
+            } else if (15 <= i && i < 20) {
+                drawnNumber = _raffeNumber(colGNumbers);
+            } else {
+                drawnNumber = _raffeNumber(colONumbers);
             }
+            lastGeneratedCard[i] = drawnNumber;
         }
         cards.push(lastGeneratedCard);
 
@@ -111,18 +145,20 @@ contract Bingo {
     }
 
     // função para declarar que completou a cartela
-    function shoutBingo(uint _cardId) external onlyOwnerOf(_cardId) {
+    function shoutBingo(uint _cardId) external onlyOwnerOf(_cardId) returns(bool) {
         if(_isWinner(cards[_cardId])) {
             winner = payable(msg.sender);
             emit GameOver(msg.sender);
+            return true;
         }
+        return false;
     }
 
     // função para verificar se houve de fato um ganhador
     function _isWinner(uint[] memory _card) private view returns(bool) {
         for(uint i = 0; i < _card.length; i++) {
             uint index = _card[i];
-            if(drawnNumbers[index] == 0) {
+            if(drawnNumbers[index - 1] == 0) {
                 return false;
             }
         }

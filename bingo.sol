@@ -100,32 +100,18 @@ contract Bingo {
     // função para criar uma nova cartela
     function _generateCard() private {
         uint[] memory lastGeneratedCard = new uint[](25);
-        uint[] memory colBNumbers = new uint[](15);
-        uint[] memory colINumbers = new uint[](15);
-        uint[] memory colNNumbers = new uint[](15);
-        uint[] memory colGNumbers = new uint[](15);
-        uint[] memory colONumbers = new uint[](15);
-        for (uint index = 0; index < 15; index++) {
-            colBNumbers[index] = index + 1;
-            colINumbers[index] = index + 16;
-            colNNumbers[index] = index + 31;
-            colGNumbers[index] = index + 46;
-            colONumbers[index] = index + 61;
+        uint[] memory cardNumbers = new uint[](75);
+        for (uint i = 0; i < 75; i++) {
+            cardNumbers[i] = i + 1;
         }
-        uint drawnNumber;
-        for (uint i = 0; i < 25; i++) {
-            if (i < 5) {
-                drawnNumber = _raffeNumber(colBNumbers);
-            } else if (5 <= i && i < 10) {
-                drawnNumber = _raffeNumber(colINumbers);
-            } else if (10 <= i && i < 15) {
-                drawnNumber = _raffeNumber(colNNumbers);
-            } else if (15 <= i && i < 20) {
-                drawnNumber = _raffeNumber(colGNumbers);
-            } else {
-                drawnNumber = _raffeNumber(colONumbers);
-            }
-            lastGeneratedCard[i] = drawnNumber;
+        for (uint i = 0; i < cardNumbers.length; i++) {
+            uint n = i + uint(keccak256(abi.encodePacked(block.timestamp))) % (cardNumbers.length - i);
+            uint temp = cardNumbers[n];
+            cardNumbers[n] = cardNumbers[i];
+            cardNumbers[i] = temp;
+        }
+        for (uint k = 0; k < 25 ; k++) {
+            lastGeneratedCard[k] = cardNumbers[k];
         }
         cards.push(lastGeneratedCard);
 

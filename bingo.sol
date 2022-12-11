@@ -9,6 +9,7 @@ contract Bingo {
     address payable owner;
     address payable winner;
     uint cardPrice = 0.001 ether;
+    bool started = false;
 
     uint[75] public drawnNumbers;
     uint[25][] public cards;
@@ -36,11 +37,17 @@ contract Bingo {
         _;
     }
 
+    // função que permite ao dono do contrato mudar o preço da cartela
+    function setCardPrice(uint _price) external onlyOwner {
+        cardPrice = _price;
+    }
+
     // função para comprar cartelas (mínimo 1 e máximo 4) baseado no valor enviado na transação
     function buyCard() external payable {
         require(msg.value >= cardPrice, "Insufficient amount!");
         uint quantity = msg.value / cardPrice;
         require(quantity + ownerCardCount[msg.sender] <= 4, "You cannot have more than 4 cards");
+        require(started == false);
 
         for (uint i = 0; i < quantity ; i++) {
             _generateCard();
@@ -53,6 +60,10 @@ contract Bingo {
     // função para sortear a bola da rodada
     // somente o dono do contrato pode chamar essa função
     function raffleBall() external onlyOwner {
+        if(started == false) {
+            started = true;
+            emit GameStart("Bingo has started!");
+        }
         uint luckyNumber;
         do {
             luckyNumber = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % 75;
@@ -77,6 +88,21 @@ contract Bingo {
         cardToOwner[id] = msg.sender;
         ownerCardCount[msg.sender]++;
         emit NewCard(id, lastGeneratedCard);
+    }
+
+    // função para retornar as cartelas de um usuário
+    /// @dev retorna um array com os ids das cartelas do usuário
+    /// @dev a partir do id você pode pegar cada cartela depois, afinal o array cards é público
+    function getCardsByOwner(address _owner) external view returns(uint[] memory) {
+        uint[] memory result = new uint[](ownerCardCount[_owner]);
+        uint counter = 0;
+        for (uint i = 0; i < cards.length; i++) {
+            if (cardToOwner[i] == _owner) {
+                result[counter] = i;
+                counter++;
+            }
+        }
+        return result;
     }
 
     // função para declarar que completou a cartela

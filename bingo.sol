@@ -57,7 +57,7 @@ contract Bingo {
         require(msg.value >= cardPrice, "Valor insuficiente!");
         uint quantity = msg.value / cardPrice;
         require(quantity + ownerCardCount[msg.sender] <= 4, "Voce nao pode ter mais de 4 cartelas!");
-        require(started == false);
+        require(started == false, "Voce nao pode comprar cartelas depois que o bingo comecou!");
 
         for (uint i = 0; i < quantity ; i++) {
             _generateCard();
@@ -92,9 +92,11 @@ contract Bingo {
     // função para retornar os números sorteados
     function getDrawnNumbers() external view returns (uint[] memory) {
         uint[] memory result = new uint[](75);
+        uint counter = 0;
         for (uint i = 0; i < 75; i++) {
             if (drawnNumbers[i] == 1) {
-                result[i] = i + 1;
+                result[counter] = i + 1;
+                counter++;
             }
         }
         return result;
@@ -177,6 +179,9 @@ contract Bingo {
         delete cards;
         delete drawnNumbers;
         winner = payable(address(0));
+        for (uint i = 0; i < cards.length; i++) {
+            delete cardToOwner[i];
+        }
         owner.transfer(address(this).balance);
     }
 }

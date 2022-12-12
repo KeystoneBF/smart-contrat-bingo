@@ -96,6 +96,7 @@ contract Bingo {
         }
         uint random = numbers[uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % numbers.length];
         uint drawnBall = numbers[random];
+        numbers[random] = numbers[numbers.length - 1];
         nonce++;
         numbers.pop();
         drawnNumbers[drawnBall - 1] = 1;
@@ -104,10 +105,10 @@ contract Bingo {
     }
 
     // função para retornar os números sorteados
-    function getDrawnNumbers() public view returns (uint[] memory) {
-        uint[] memory result = new uint[](75);
+    function getDrawnNumbers() public view returns (uint8[] memory) {
+        uint8[] memory result = new uint8[](75);
         uint counter = 0;
-        for (uint i = 0; i < 75; i++) {
+        for (uint8 i = 0; i < 75; i++) {
             if (drawnNumbers[i] == 1) {
                 result[counter] = i + 1;
                 counter++;
@@ -161,7 +162,7 @@ contract Bingo {
 
     // função para declarar que completou a cartela
     function shoutBingo(uint _cardId) external onlyOwnerOf(_cardId) {
-        uint[] memory nums = getDrawnNumbers();
+        uint8[] memory nums = getDrawnNumbers();
         uint counter = 0;
         for (uint i = 0; i < 75; i++) {
             if (nums[i] == 0) {

@@ -3,7 +3,9 @@ pragma solidity >=0.5.0;
 
 contract Bingo {
     event GameStart(string message);
-    event GameOver(address winner);
+    event GameOver(address winnerAddress);
+    event YouWin(address indexed userAddress);
+    event YouDidNotWin(address indexed userAddress);
     event NewCard(uint cardId, uint[] card);
     event NewBallDrawn(uint number);
 
@@ -18,7 +20,8 @@ contract Bingo {
     uint[][] public cards;
 
     mapping (uint => address) public cardToOwner;
-    mapping (address => uint) ownerCardCount;
+    mapping (address => uint) public ownerCardCount;
+    address[] public users;
 
     constructor() {
         owner =  payable(msg.sender);
@@ -63,7 +66,7 @@ contract Bingo {
             _generateCard();
             ownerCardCount[msg.sender]++;
         }
-
+        users.push(msg.sender);
         uint change = msg.value % cardPrice;
         payable(msg.sender).transfer(change);
     }
@@ -90,7 +93,7 @@ contract Bingo {
     }
 
     // função para retornar os números sorteados
-    function getDrawnNumbers() external view returns (uint[] memory) {
+    function getDrawnNumbers() public view returns (uint[] memory) {
         uint[] memory result = new uint[](75);
         uint counter = 0;
         for (uint i = 0; i < 75; i++) {
@@ -146,20 +149,31 @@ contract Bingo {
     }
 
     // função para declarar que completou a cartela
-    function shoutBingo(uint _cardId) external onlyOwnerOf(_cardId) returns(bool) {
-        if(_isWinner(cards[_cardId])) {
-            winner = payable(msg.sender);
-            emit GameOver(msg.sender);
-            return true;
+    function shoutBingo(uint _cardId) external onlyOwnerOf(_cardId) {
+        uint[] memory nums = getDrawnNumbers();
+        uint counter = 0;
+        for (uint i = 0; i < 75; i++) {
+            if (nums[i] == 0) {
+                break;
+            }
+            counter++;
         }
-        return false;
+        require(counter >= 25, "Ainda nao foram sorteados numeros o suficiente para haver um ganhador!");
+        if(_isWinner(_cardId)) {
+            winner = payable(msg.sender);
+            emit YouWin(msg.sender);
+            emit GameOver(msg.sender);
+        }
+        emit YouDidNotWin(msg.sender);
     }
 
     // função para verificar se houve de fato um ganhador
-    function _isWinner(uint[] memory _card) private view returns(bool) {
-        for(uint i = 0; i < _card.length; i++) {
-            uint index = _card[i];
-            if(drawnNumbers[index - 1] == 0) {
+    /// @dev Essa função está como pública por enquanto por motivos de teste, o certo é privada
+    function _isWinner(uint _cardId) public view returns(bool) {
+        uint[] memory card = cards[_cardId];
+        for(uint i = 0; i < card.length; i++) {
+            uint index = card[i] - 1;
+            if(drawnNumbers[index] == 0) {
                 return false;
             }
         }
@@ -182,6 +196,12 @@ contract Bingo {
         for (uint i = 0; i < cards.length; i++) {
             delete cardToOwner[i];
         }
+        for (uint j = 0; j < users.length; j++) {
+            if(ownerCardCount[users[j]] != 0){
+                ownerCardCount[users[j]] = 0;
+            }
+        }
+        delete users;
         owner.transfer(address(this).balance);
     }
 }

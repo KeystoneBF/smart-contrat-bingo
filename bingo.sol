@@ -6,7 +6,7 @@ contract Bingo {
   event GameOver(address winnerAddress);
   event YouWin(address indexed userAddress);
   event YouDidNotWin(address indexed userAddress);
-  event NewCard(uint cardId, uint[] card);
+  event NewCard(uint cardId, uint8[] card);
   event NewBallDrawn(uint number);
   event RestartGame(string message);
   event RefreshBingo(uint prize, uint cardValue, uint players);
@@ -17,9 +17,9 @@ contract Bingo {
   bool started = false;
   uint nonce = 0;
 
-  uint[] public numbers;
-  uint[75] public drawnNumbers;
-  uint[][] public cards;
+  uint8[] public numbers;
+  uint8[75] public drawnNumbers;
+  uint8[][] public cards;
 
   mapping (uint => address) public cardToOwner;
   mapping (address => uint) public ownerCardCount;
@@ -27,15 +27,15 @@ contract Bingo {
 
   constructor() {
     owner =  payable(msg.sender);
-    for(uint i=0; i < 75; i++) {
+    for(uint8 i = 0; i < 75; i++) {
       numbers.push(i + 1);
     }
-    for(uint i=0; i < 23; i++) {
-      uint drawnBall = numbers[i+1];
-      nonce++;
-      numbers.pop();
-      drawnNumbers[drawnBall - 1] = 1;
-    }
+    //for(uint i = 0; i < 23; i++) {
+    //  uint drawnBall = numbers[i+1];
+    //  nonce++;
+    //  numbers.pop();
+    //  drawnNumbers[drawnBall - 1] = 1;
+    //}
   }
 
   modifier onlyOwner {
@@ -76,8 +76,8 @@ contract Bingo {
     }
     if (ownerCardCount[msg.sender] == 1) {
       users.push(msg.sender);
-      emit RefreshBingo(address(this).balance / 2, cardPrice, users.length);
     }
+    emit RefreshBingo(address(this).balance / 2, cardPrice, users.length);
     uint change = msg.value % cardPrice;
     payable(msg.sender).transfer(change);
   }
@@ -118,14 +118,14 @@ contract Bingo {
 
   // função para criar uma nova cartela
   function _generateCard() private {
-    uint[] memory lastGeneratedCard = new uint[](25);
-    uint[] memory cardNumbers = new uint[](75);
-    for (uint i = 0; i < 75; i++) {
+    uint8[] memory lastGeneratedCard = new uint8[](25);
+    uint8[] memory cardNumbers = new uint8[](75);
+    for (uint8 i = 0; i < 75; i++) {
       cardNumbers[i] = i + 1;
     }
     for (uint i = 0; i < cardNumbers.length; i++) {
       uint n = i + uint(keccak256(abi.encodePacked(block.timestamp))) % (cardNumbers.length - i);
-      uint temp = cardNumbers[n];
+      uint8 temp = cardNumbers[n];
       cardNumbers[n] = cardNumbers[i];
       cardNumbers[i] = temp;
     }
@@ -155,7 +155,7 @@ contract Bingo {
   }
 
   // função para retornar os números de uma cartela a partir do seu Id
-  function getCardById(uint _cardId) external view returns(uint[] memory) {
+  function getCardById(uint _cardId) external view returns(uint8[] memory) {
     return cards[_cardId];
   }
 
@@ -188,7 +188,7 @@ contract Bingo {
   // função para verificar se houve de fato um ganhador
   /// @dev Essa função está como pública por enquanto por motivos de teste, o certo é privada
   function _isWinner(uint _cardId) public view returns(bool) {
-    uint[] memory card = cards[_cardId];
+    uint8[] memory card = cards[_cardId];
     for(uint i = 0; i < card.length; i++) {
       uint index = card[i] - 1;
       if(drawnNumbers[index] == 0) {

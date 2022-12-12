@@ -61,12 +61,15 @@ contract Bingo {
         uint quantity = msg.value / cardPrice;
         require(quantity + ownerCardCount[msg.sender] <= 4, "Voce nao pode ter mais de 4 cartelas!");
         require(started == false, "Voce nao pode comprar cartelas depois que o bingo comecou!");
+    
+        if (ownerCardCount[msg.sender] == 0) {
+            users.push(msg.sender);
+        }
 
         for (uint i = 0; i < quantity ; i++) {
             _generateCard();
             ownerCardCount[msg.sender]++;
         }
-        users.push(msg.sender);
         uint change = msg.value % cardPrice;
         payable(msg.sender).transfer(change);
     }
